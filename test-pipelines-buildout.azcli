@@ -1,0 +1,193 @@
+
+
+
+# Login as owner
+az login
+az logout
+
+# Build Subscription ID
+subscriptionBuildId="[your subscriptionId]"
+tenantId="[your tenantId]"
+
+# Other Variables
+rgName="testpipelines-build"
+locationName="centralus"
+vnetName="testpipelines-build"
+subnetName="builders"
+nsgName="nsg-builders"
+vmAdmin="demo"
+vmPassword="[yourpassword]"
+nsgCust1Name="nsg-test-Cust1"
+nsgCust2Name="nsg-test-Cust2"
+asgCust1Name="asg-test-Cust1"
+asgCust2Name="asg-test-Cust2"
+
+
+# Create Control Plane App Registration
+appRegControlPlaneName="test-ControlPlane"
+appRegControlPlane=$(az ad sp create-for-rbac --name $appRegControlPlaneName --skip-assignment)
+appRegControlPlaneObjectId=$(az ad sp list --display-name $appRegControlPlaneName --query [].objectId --output tsv)
+appRegControlPlaneAppId=$(echo $appRegControlPlane | jq -r .appId)
+appRegControlPlanePassword=$(echo $appRegControlPlane | jq -r .password)
+
+# Create Cust1 App Registration
+appRegCust1Name="test-Cust1"
+appRegCust1=$(az ad sp create-for-rbac --name $appRegCust1Name --skip-assignment)
+appRegCust1ObjectId=$(az ad sp list --display-name $appRegCust1Name --query [].objectId --output tsv)
+appRegCust1AppId=$(echo $appRegCust1 | jq -r .appId)
+appRegCust1Password=$(echo $appRegCust1 | jq -r .password)
+
+# Create Cust2 App Registration
+appRegCust2Name="test-Cust2"
+appRegCust2=$(az ad sp create-for-rbac --name $appRegCust2Name --skip-assignment)
+appRegCust2ObjectId=$(az ad sp list --display-name $appRegCust2Name --query [].objectId --output tsv)
+appRegCust2AppId=$(echo $appRegCust2 | jq -r .appId)
+appRegCust2Password=$(echo $appRegCust2 | jq -r .password)
+
+# # Troubleshooting
+# Get Password again if needed
+appRegControlPlaneName="test-ControlPlane"
+appRegControlPlaneObjectId=$(az ad sp list --display-name $appRegControlPlaneName --query [].objectId --output tsv)
+appRegControlPlaneAppId=$(az ad sp list --display-name $appRegControlPlaneName --query [].appId --output tsv)
+appRegControlPlanePassword=$(az ad app credential reset --id $appRegControlPlaneAppId | jq -r .password)
+
+appRegCust1Name="test-Cust1"
+appRegCust1ObjectId$=(az ad sp list --display-name $appRegCust1Name --query [].objectId --output tsv)
+appRegCust1AppId=$(az ad sp list --display-name $appRegCust1Name --query [].appId --output tsv)
+appRegCust1Password=$(az ad app credential reset --id $appRegCust1AppId | jq -r .password)
+
+appRegCust2Name="test-Cust2"
+appRegCust2ObjectId=$(az ad sp list --display-name $appRegCust2Name --query [].objectId --output tsv)
+appRegCust2AppId=$(az ad sp list --display-name $appRegCust2Name --query [].appId --output tsv)
+appRegCust2Password=$(az ad app credential reset --id $appRegCust2AppId | jq -r .password)
+
+
+# Set Control Plane App Registration to Subscription Owner
+az role assignment create --role "owner" --assignee $appRegControlPlaneObjectId --subscription $subscriptionBuildId
+
+# Set role context to Control Plane App Registration
+az logout
+az login --service-principal -u "http://"$appRegControlPlaneName -p $appRegControlPlanePassword --tenant $tenantId
+
+# Create Resource Group
+az group create --name $rgName --location $locationName
+
+# Create Virtual Network
+az network vnet create --name $vnetName --resource-group $rgName --address-prefixes "10.0.0.0/16" --subnet-name $subnetName --subnet-prefixes "10.0.0.0/16"
+subnetId=$(az network vnet subnet list --resource-group $rgName --vnet-name $vnetName --query "[0].id" --output tsv)
+
+# Create Network Security Group and Application Security Group
+az network nsg create --name $nsgCust1Name --resource-group $rgName
+az network nsg create --name $nsgCust2Name --resource-group $rgName
+az network asg create --name $asgCust1Name --resource-group $rgName
+az network asg create --name $asgCust2Name --resource-group $rgName
+
+# NSG Rules
+# Customer1
+az network nsg rule create --name "deny-other-customer-traffic" --resource-group $rgName --nsg-name $nsgCust1Name --priority 4090 --access Deny --direction Inbound --source-address-prefixes VirtualNetwork --source-port-ranges "*" --destination-address-prefixes VirtualNetwork --destination-port-ranges "*" --protocol "*" 
+az network nsg rule create --name "allow-same-customer-traffic" --resource-group $rgName --nsg-name $nsgCust1Name --priority 200 --access Allow --direction Inbound --source-asgs $asgCust1Name --source-port-ranges "*" --destination-asgs $asgCust1Name --destination-port-ranges "*" --protocol "*" 
+# Customer2
+az network nsg rule create --name "deny-other-customer-traffic" --resource-group $rgName --nsg-name $nsgCust2Name --priority 4090 --access Deny --direction Inbound --source-address-prefixes VirtualNetwork --source-port-ranges "*" --destination-address-prefixes VirtualNetwork --destination-port-ranges "*" --protocol "*" 
+az network nsg rule create --name "allow-same-customer-traffic" --resource-group $rgName --nsg-name $nsgCust2Name --priority 200 --access Allow --direction Inbound --source-asgs $asgCust2Name --source-port-ranges "*" --destination-asgs $asgCust2Name --destination-port-ranges "*" --protocol "*" 
+                           
+
+# Create Custom Role, apply to Resource Group
+# Customer1
+roleCustomer1VmBuilderName="custom-role-test-customer1-vm-builder"
+roleCustomer1NsgJoin="custom-role-test-customer1-nsg-join"
+az role definition create --role-definition $roleCustomer1VmBuilderName".json"
+az role definition create --role-definition $roleCustomer1NsgJoin".json"
+az role assignment create --role $roleCustomer1VmBuilderName --assignee $appRegCust1AppId --resource-group $rgName
+az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust1"
+az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust1"
+
+# Customer2
+roleCustomer2VmBuilderName="custom-role-test-customer2-vm-builder"
+roleCustomer2NsgJoin="custom-role-test-customer2-nsg-join"
+az role definition create --role-definition $roleCustomer2VmBuilderName".json"
+az role definition create --role-definition $roleCustomer2NsgJoin".json"
+az role assignment create --role $roleCustomer2VmBuilderName --assignee $appRegCust2AppId --resource-group $rgName
+az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust2"
+az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust2"
+
+# Troubleshooting
+# Update Role Definitions
+roleCustomer1VmBuilderName="custom-role-test-customer1-vm-builder"
+roleCustomer1NsgJoin="custom-role-test-customer1-nsg-join"
+roleCustomer2VmBuilderName="custom-role-test-customer2-vm-builder"
+roleCustomer2NsgJoin="custom-role-test-customer2-nsg-join"
+
+az role definition update --role-definition $roleCustomer1VmBuilderName".json"
+az role definition update --role-definition $roleCustomer1NsgJoin".json"
+az role definition update --role-definition $roleCustomer2VmBuilderName".json"
+az role definition update --role-definition $roleCustomer2NsgJoin".json"
+
+# # Delete Role Definitions
+# az role definition delete --name $roleCustomer1VmBuilderName
+# az role definition delete --name $roleCustomer1NsgJoin
+
+# Create Customer1 VMs
+az login --service-principal -u "http://"$appRegCust1Name -p $appRegCust1Password --tenant $tenantId
+vmCust1Name="customer1vm1"
+az vm create --name $vmCust1Name --resource-group $rgName --location $locationName --image UbuntuLTS --admin-username $vmAdmin --admin-password $vmPassword --subnet $subnetId --size Standard_DS1_v2 --nsg $nsgCust1Name --asg $asgCust1Name --tags customerVM=$vmCust1Name
+
+# Assign Customer1 ownership over it's resources
+# Login as Control Plane again
+az login --service-principal -u "http://"$appRegControlPlaneName -p $appRegControlPlanePassword --tenant $tenantId
+vmCust1Resources=$(az resource list --tag customerVM=$vmCust1Name --output json | jq -r '[.[].id] | join(" ")')
+for id in $vmCust1Resources
+do
+    az role assignment create --role "owner" --assignee $appRegCust1AppId --scope $id
+done
+
+# Create Customer2 VMs
+az login --service-principal -u "http://"$appRegCust2Name -p $appRegCust2Password --tenant $tenantId
+vmCust2Name="customer2vm1"
+az vm create --name $vmCust2Name --resource-group $rgName --location $locationName --image UbuntuLTS --admin-username $vmAdmin --admin-password $vmPassword --subnet $subnetId --size Standard_DS1_v2 --nsg $nsgCust2Name --asg $asgCust2Name --tags customerVM=$vmCust2Name
+# Assign Customer2 ownership over it's resources
+# Login as Control Plane again
+az login --service-principal -u "http://"$appRegControlPlaneName -p $appRegControlPlanePassword --tenant $tenantId
+vmCust2Resources=$(az resource list --tag customerVM=$vmCust2Name --output json | jq -r '[.[].id] | join(" ")')
+for id in $vmCust2Resources
+do
+    az role assignment create --role "owner" --assignee $appRegCust2AppId --scope $id
+done
+
+
+# Delete Customer1 VM and dependent VM resources
+# Login as test Cust1 app registration
+az login --service-principal -u "http://"$appRegCust1Name -p $appRegCust1Password --tenant $tenantId
+# Delete VM first, then rest of objects by its tag
+az vm delete --name $vmCust1Name --resource-group $rgName --yes
+vmCust1Resources=$(az resource list --tag customerVM=$vmCust1Name --output json | jq -r '[.[].id] | join(" ")')
+for id in $vmCust1Resources
+do 
+    az resource delete --ids $id
+done
+
+# Delete Customer2 VM and dependent VM resources
+# Login as test Cust2 app registration
+az login --service-principal -u "http://"$appRegCust2Name -p $appRegCust2Password --tenant $tenantId
+# Delete VM first, then rest of objects by its tag
+az vm delete --name $vmCust2Name --resource-group $rgName --yes
+vmCust2Resources=$(az resource list --tag customerVM=$vmCust2Name --output json | jq -r '[.[].id] | join(" ")')
+for id in $vmCust2Resources
+do 
+    az resource delete --ids $id
+done
+
+# Tests
+# Try to deploy Customer2 VM onto Customer1 ASG as test-Cust2 - It fails as expected
+az login --service-principal -u "http://"$appRegCust2Name -p $appRegCust2Password --tenant $tenantId
+vmCust2Name="customer2vm2"
+az vm create --name $vmCust2Name --resource-group $rgName --location $locationName --image UbuntuLTS --admin-username $vmAdmin --admin-password $vmPassword --subnet $subnetId --size Standard_DS1_v2 --nsg "" --asg $asgCust1Name
+
+# Try Customer2 to power and delete operations on Customer1 VM  as jfroc-Cust2 - All Fail as expected
+az login --service-principal -u "http://"$appRegCust2Name -p $appRegCust2Password --tenant $tenantId
+vmCust1Name="customer1vm1"
+az vm stop --name $vmCust1Name --resource-group $rgName
+az vm start --name $vmCust1Name --resource-group $rgName
+az vm redeploy --name $vmCust1Name --resource-group $rgName
+az vm delete --name $vmCust1Name --resource-group $rgName --yes
+az vm restart --name $vmCust1Name --resource-group $rgName
+az vm deallocate --name $vmCust1Name --resource-group $rgName
