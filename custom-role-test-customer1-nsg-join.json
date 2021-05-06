@@ -1,10 +1,10 @@
 {
-    "Name": "custom-role-jfrog-customer1-nsg-join",
+    "Name": "custom-role-xxx-customer1-nsg-join",
     "IsCustom": true,
     "description": "",
     "assignableScopes": [
-        "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/jfrogpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-jfrog-Cust1",
-        "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/jfrogpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-jfrog-Cust1"
+        "/subscriptions/xxxx/providers/Microsoft.Network/networkSecurityGroups/nsg-jfrog-Cust1",
+        "/subscriptions/xxxx/providers/Microsoft.Network/applicationSecurityGroups/asg-jfrog-Cust1"
     ],
     "actions": [
         "Microsoft.Network/networkSecurityGroups/*",
