@@ -1,9 +1,9 @@
 {
-    "Name": "custom-role-jfrog-customer2-vm-builder",
+    "Name": "custom-role-xxx-customer2-vm-builder",
     "IsCustom": true,
     "description": "",
     "assignableScopes": [
-        "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/jfrogpipelines-build"
+        "/xxx"
     ],
     "actions": [
         "Microsoft.Authorization/*/read",
