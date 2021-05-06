@@ -98,8 +98,8 @@ roleCustomer1NsgJoin="custom-role-test-customer1-nsg-join"
 az role definition create --role-definition $roleCustomer1VmBuilderName".json"
 az role definition create --role-definition $roleCustomer1NsgJoin".json"
 az role assignment create --role $roleCustomer1VmBuilderName --assignee $appRegCust1AppId --resource-group $rgName
-az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust1"
-az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust1"
+az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/"$subscriptionBuildId"/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust1"
+az role assignment create --role $roleCustomer1NsgJoin --assignee $appRegCust1AppId --scope "/subscriptions/"$subscriptionBuildId"/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust1"
 
 # Customer2
 roleCustomer2VmBuilderName="custom-role-test-customer2-vm-builder"
@@ -107,8 +107,8 @@ roleCustomer2NsgJoin="custom-role-test-customer2-nsg-join"
 az role definition create --role-definition $roleCustomer2VmBuilderName".json"
 az role definition create --role-definition $roleCustomer2NsgJoin".json"
 az role assignment create --role $roleCustomer2VmBuilderName --assignee $appRegCust2AppId --resource-group $rgName
-az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust2"
-az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust2"
+az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/"$subscriptionBuildId"/resourceGroups/testpipelines-build/providers/Microsoft.Network/networkSecurityGroups/nsg-test-Cust2"
+az role assignment create --role $roleCustomer2NsgJoin --assignee $appRegCust2AppId --scope "/subscriptions/"$subscriptionBuildId"/resourceGroups/testpipelines-build/providers/Microsoft.Network/applicationSecurityGroups/asg-test-Cust2"
 
 # Troubleshooting
 # Update Role Definitions
