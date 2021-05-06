@@ -3,7 +3,7 @@
     "IsCustom": true,
     "description": "",
     "assignableScopes": [
-        "/subscriptions/82407e9e-4bfb-4a86-95d6-43b561a9ee29/resourceGroups/jfrogpipelines-build"
+        "xxxx"
     ],
     "actions": [
         "Microsoft.Authorization/*/read",
